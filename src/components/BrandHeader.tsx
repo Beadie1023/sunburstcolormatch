@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/sunburst-logo (1).png";
+import logo from "@/assets/sunburst-logo.png";
 
 export function BrandHeader({ subtitle }: { subtitle?: string }) {
   return (

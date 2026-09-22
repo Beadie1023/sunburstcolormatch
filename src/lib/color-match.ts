@@ -56,15 +56,18 @@ export function rgbToHex({ r, g, b }: Rgb): string {
 type Lab = { L: number; a: number; b: number };
 
 function rgbToLab({ r, g, b }: Rgb): Lab {
-  const srgb = [r, g, b].map((v) => {
+  const toLinear = (v: number) => {
     const c = v / 255;
     return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
+  };
+  const lr = toLinear(r);
+  const lg = toLinear(g);
+  const lb = toLinear(b);
 
   // sRGB -> XYZ (D65)
-  const x = (srgb[0] * 0.4124564 + srgb[1] * 0.3575761 + srgb[2] * 0.1804375) / 0.95047;
-  const y = srgb[0] * 0.2126729 + srgb[1] * 0.7151522 + srgb[2] * 0.072175;
-  const z = (srgb[0] * 0.0193339 + srgb[1] * 0.119192 + srgb[2] * 0.9503041) / 1.08883;
+  const x = (lr * 0.4124564 + lg * 0.3575761 + lb * 0.1804375) / 0.95047;
+  const y = lr * 0.2126729 + lg * 0.7151522 + lb * 0.072175;
+  const z = (lr * 0.0193339 + lg * 0.119192 + lb * 0.9503041) / 1.08883;
 
   const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
   const fx = f(x);
@@ -115,11 +118,11 @@ export function dominantColor(data: Uint8ClampedArray): Rgb {
   const buckets = new Map<number, { count: number; r: number; g: number; b: number }>();
 
   for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3];
+    const alpha = data[i + 3] ?? 255;
     if (alpha < 200) continue;
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
@@ -147,9 +150,9 @@ export function dominantColor(data: Uint8ClampedArray): Rgb {
     let b = 0;
     let n = 0;
     for (let i = 0; i < data.length; i += 4) {
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
+      r += data[i] ?? 0;
+      g += data[i + 1] ?? 0;
+      b += data[i + 2] ?? 0;
       n += 1;
     }
     return { r: clamp255(r / n), g: clamp255(g / n), b: clamp255(b / n) };

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
-import { dominantColor, rgbToHex, type Rgb } from "@/lib/color-match";
+import { dominantColor, rgbToHex, sampleAreaAverage, type Rgb } from "@/lib/color-match";
 
 export function PhotoPicker({ onPicked }: { onPicked: (rgb: Rgb) => void }) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -32,17 +32,43 @@ export function PhotoPicker({ onPicked }: { onPicked: (rgb: Rgb) => void }) {
 
   function handleTap(event: React.MouseEvent<HTMLImageElement>) {
     const img = imageRef.current;
-    if (!img) return;
+    if (!img || !img.naturalWidth) return;
     const rect = img.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width;
-    const py = (event.clientY - rect.top) / rect.height;
+
+    // The image uses object-contain, so the rendered image can be smaller
+    // than its box (letterboxed) when the aspect ratios don't match. Work
+    // out the actual displayed image rectangle within the box so taps near
+    // the edges don't map to the wrong pixel.
+    const imageAspect = img.naturalWidth / img.naturalHeight;
+    const boxAspect = rect.width / rect.height;
+
+    let renderedWidth = rect.width;
+    let renderedHeight = rect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (imageAspect > boxAspect) {
+      renderedHeight = rect.width / imageAspect;
+      offsetY = (rect.height - renderedHeight) / 2;
+    } else {
+      renderedWidth = rect.height * imageAspect;
+      offsetX = (rect.width - renderedWidth) / 2;
+    }
+
+    const tapX = event.clientX - rect.left - offsetX;
+    const tapY = event.clientY - rect.top - offsetY;
+    if (tapX < 0 || tapY < 0 || tapX > renderedWidth || tapY > renderedHeight) return;
+
+    const px = tapX / renderedWidth;
+    const py = tapY / renderedHeight;
 
     const pixels = readPixels();
     if (!pixels) return;
     const x = Math.min(pixels.width - 1, Math.max(0, Math.round(px * pixels.width)));
     const y = Math.min(pixels.height - 1, Math.max(0, Math.round(py * pixels.height)));
-    const i = (y * pixels.width + x) * 4;
-    setSampled({ r: pixels.data[i], g: pixels.data[i + 1], b: pixels.data[i + 2] });
+
+    // Average a small area around the tap instead of one noisy pixel.
+    setSampled(sampleAreaAverage(pixels.data, pixels.width, pixels.height, x, y, 6));
   }
 
   function handleAutoDetect() {

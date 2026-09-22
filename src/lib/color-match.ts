@@ -113,6 +113,51 @@ export function findMatches(input: Rgb, colors: PaintColor[], count = 4): Match[
     .slice(0, count);
 }
 
+/**
+ * Average a small NxN box of pixels around a point instead of reading one
+ * pixel. A single pixel is noisy (camera sensor noise, JPEG compression
+ * blocks, anti-aliasing) and can throw off an otherwise-good tap.
+ */
+export function sampleAreaAverage(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  radius = 6,
+): Rgb {
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let count = 0;
+
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const px = x + dx;
+      const py = y + dy;
+      if (px < 0 || py < 0 || px >= width || py >= height) continue;
+      const i = (py * width + px) * 4;
+      const alpha = data[i + 3] ?? 255;
+      if (alpha < 200) continue;
+      rSum += data[i] ?? 0;
+      gSum += data[i + 1] ?? 0;
+      bSum += data[i + 2] ?? 0;
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    const i = (y * width + x) * 4;
+    return { r: data[i] ?? 0, g: data[i + 1] ?? 0, b: data[i + 2] ?? 0 };
+  }
+
+  return {
+    r: clamp255(rSum / count),
+    g: clamp255(gSum / count),
+    b: clamp255(bSum / count),
+  };
+}
+
 /** Dominant colour via coarse RGB histogram, ignoring near-white/near-black noise. */
 export function dominantColor(data: Uint8ClampedArray): Rgb {
   const buckets = new Map<number, { count: number; r: number; g: number; b: number }>();

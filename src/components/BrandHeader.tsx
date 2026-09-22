@@ -8,10 +8,10 @@ export function BrandHeader({ subtitle }: { subtitle?: string }) {
         <Link to="/" aria-label="Sunburst Color Match home">
           <img
             src={logo}
-            alt="Sunburst Paints"
-            width={1152}
-            height={576}
-            className="h-14 w-auto sm:h-16"
+            alt="Sunburst Paints & Coatings — Superior Quality Paints"
+            width={1774}
+            height={887}
+            className="h-20 w-auto sm:h-24"
           />
         </Link>
         <p className="font-display text-xl font-semibold text-primary sm:text-2xl">
